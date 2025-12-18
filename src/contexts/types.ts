@@ -1,4 +1,5 @@
 import React, { createContext } from 'react';
+import { type ModelOption } from '../config/models';
 
 export interface MiniApp {
   id: string;
@@ -15,6 +16,7 @@ export interface AppState {
   miniApps: MiniApp[];
   activeMiniAppId: string | null;
   theme: ThemeMode;
+  models: ModelOption[];
 }
 
 export interface AppContextProps {
@@ -25,6 +27,7 @@ export interface AppContextProps {
   deleteMiniApp: (id: string) => void;
   setActiveMiniAppId: (id: string | null) => void;
   setTheme: (theme: ThemeMode) => void;
+  setModels: (models: ModelOption[]) => void;
 }
 
 export const AppContext = createContext<AppContextProps | undefined>(undefined);

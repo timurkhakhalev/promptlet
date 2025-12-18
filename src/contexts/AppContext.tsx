@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { type MiniApp, type ThemeMode, type AppState, AppContext } from './types';
+import { DEFAULT_MODEL, MODEL_OPTIONS, type ModelOption } from '../config/models';
+
+const getDefaultModel = (models: ModelOption[]) => (models?.[0]?.value ? models[0].value : DEFAULT_MODEL);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Helper function to apply theme
   const applyTheme = (theme: ThemeMode) => {
     const html = document.documentElement;
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
+
     const shouldBeDark = theme === 'dark' || (theme === 'system' && systemPrefersDark);
-    
+
     if (shouldBeDark) {
       html.classList.add('dark');
     } else {
@@ -19,18 +22,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [state, setState] = useState<AppState>(() => {
     const savedState = localStorage.getItem('promptletState');
-    
+
     let initialState: AppState = {
       apiKey: null,
       saveApiKey: true,
       miniApps: [],
       activeMiniAppId: null,
       theme: 'light' as ThemeMode, // Default to light theme instead of system
+      models: MODEL_OPTIONS,
     };
-    
+
     if (savedState) {
       const parsed = JSON.parse(savedState);
-      initialState = { ...initialState, ...parsed };
+      initialState = {
+        ...initialState,
+        ...parsed,
+        models: parsed.models?.length ? parsed.models : MODEL_OPTIONS,
+      };
     }
 
     return initialState;
@@ -67,21 +75,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [state.theme]);
 
   const setApiKey = (apiKey: string | null, save: boolean = true) => {
-    setState((prevState) => ({ 
-      ...prevState, 
-      apiKey, 
-      saveApiKey: save 
+    setState((prevState) => ({
+      ...prevState,
+      apiKey,
+      saveApiKey: save
+    }));
+  };
+
+  const setModels = (models: ModelOption[]) => {
+    if (!models.length) {
+      return;
+    }
+    setState((prevState) => ({
+      ...prevState,
+      models,
     }));
   };
 
   const addMiniApp = (miniApp: Omit<MiniApp, 'id'>) => {
-    const newMiniApp = { ...miniApp, id: uuidv4() };
-    setState((prevState) => ({
-      ...prevState,
-      miniApps: [...prevState.miniApps, newMiniApp],
-      activeMiniAppId: newMiniApp.id, // Auto-select the newly created app
-    }));
-    return newMiniApp.id;
+    const newId = uuidv4();
+    setState((prevState) => {
+      const modelToUse = miniApp.model || getDefaultModel(prevState.models);
+      const newMiniApp = {
+        ...miniApp,
+        model: modelToUse,
+        id: newId
+      };
+      return {
+        ...prevState,
+        miniApps: [...prevState.miniApps, newMiniApp],
+        activeMiniAppId: newMiniApp.id, // Auto-select the newly created app
+      };
+    });
+    return newId;
   };
 
   const updateMiniApp = (updatedMiniApp: MiniApp) => {
@@ -118,6 +144,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteMiniApp,
         setActiveMiniAppId,
         setTheme,
+        setModels,
       }}
     >
       {children}

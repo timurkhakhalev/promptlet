@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '../contexts/types';
 import { type MiniApp } from '../contexts/types';
 import { X, Check } from 'lucide-react';
+import { DEFAULT_MODEL, MODEL_OPTIONS, type ModelOption } from '../config/models';
 
 interface CreateAppModalProps {
   onClose: () => void;
@@ -9,12 +10,12 @@ interface CreateAppModalProps {
 }
 
 const CreateAppModal: React.FC<CreateAppModalProps> = ({ onClose, editingApp }) => {
-  const { addMiniApp, updateMiniApp } = useAppContext();
-  const [formData, setFormData] = useState({
+  const { addMiniApp, updateMiniApp, state } = useAppContext();
+  const [formData, setFormData] = useState(() => ({
     name: '',
-    model: 'gemini-2.5-flash',
-    systemPrompt: ''
-  });
+    model: state.models?.[0]?.value || DEFAULT_MODEL,
+    systemPrompt: '',
+  }));
 
   useEffect(() => {
     if (editingApp) {
@@ -25,6 +26,18 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ onClose, editingApp }) 
       });
     }
   }, [editingApp]);
+
+  const models: ModelOption[] = useMemo(() => {
+    const base = state.models?.length ? state.models : MODEL_OPTIONS;
+    if (!editingApp) return base;
+    const exists = base.some((model) => model.value === editingApp.model);
+    return exists
+      ? base
+      : [
+          ...base,
+          { value: editingApp.model, label: `${editingApp.model} (existing)` },
+        ];
+  }, [editingApp, state.models]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -44,7 +57,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ onClose, editingApp }) 
         systemPrompt: formData.systemPrompt.trim() || ''
       });
     }
-    
+
     onClose();
   };
 
@@ -56,12 +69,6 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ onClose, editingApp }) 
       handleSubmit();
     }
   };
-
-  const models = [
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' }
-  ];
 
   return (
     <div className="fixed inset-0 bg-white dark:bg-slate-900 z-50 md:bg-black/20 md:backdrop-blur-sm md:flex md:items-center md:justify-center p-4">
@@ -80,7 +87,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ onClose, editingApp }) 
               <X size={20} />
             </button>
           </div>
-          
+
           {/* Content */}
           <div className="p-4 md:p-6 space-y-4 flex-1 overflow-y-auto">
             <div>
